@@ -5,7 +5,8 @@ import Input from '../../components/UI/Input/Input';
 import Select from '../../components/UI/Select/Select';
 import {createControl, validate, validateForm} from '../../form/formFramework';
 import Auxiliary from '../../hoc/Auxiliary/Auxiliary';
-import axios from '../../axios/axios-quiz';
+import {connect} from 'react-redux';
+import {createQuizQuestion, finishCreateQuiz} from '../../store/actions/create';
 
 function createOptionControl(number) {
     return createControl({
@@ -28,30 +29,26 @@ function createFormControls() {
     }
 }
 
-export default class QuizCreator extends Component {
+class QuizCreator extends Component {
 
     state = {
-        quiz: [],
         isFormValid: false,
         rightAnswerId: 1,
         formControls: createFormControls()
     };
 
-    submitHandler = (event) => {
+    sibmitHandler = event => {
         event.preventDefault()
     };
 
-    addQuestionHandler = (event) => {
+    addQuestionHandler = event => {
         event.preventDefault();
-
-        const quiz = this.state.quiz.concat();
-        const index = quiz.length + 1;
 
         const {question, option1, option2, option3, option4} = this.state.formControls;
 
         const questionItem = {
             question: question.value,
-            id: index,
+            id: this.props.quiz.length + 1,
             rightAnswerId: this.state.rightAnswerId,
             answers: [
                 {text: option1.value, id: option1.id},
@@ -61,30 +58,24 @@ export default class QuizCreator extends Component {
             ]
         };
 
-        quiz.push(questionItem);
+        this.props.createQuizQuestion(questionItem);
 
         this.setState({
-            quiz,
             isFormValid: false,
             rightAnswerId: 1,
             formControls: createFormControls()
         })
     };
 
-    createQuizHandler = async (event) => {
+    createQuizHandler = event => {
         event.preventDefault();
 
-        try {
-            await axios.post('/quizes.json', this.state.quiz);
-            this.setState({
-                quiz: [],
-                isFormValid: false,
-                rightAnswerId: 1,
-                formControls: createFormControls()
-            })
-        } catch (e) {
-            console.log(e)
-        }
+        this.setState({
+            isFormValid: false,
+            rightAnswerId: 1,
+            formControls: createFormControls()
+        });
+        this.props.finishCreateQuiz()
     };
 
     changeHandler = (value, controlName) => {
@@ -105,7 +96,7 @@ export default class QuizCreator extends Component {
 
     renderControls() {
         return Object.keys(this.state.formControls).map((controlName, index) => {
-            const control = this.state.formControls[controlName]
+            const control = this.state.formControls[controlName];
 
             return (
                 <Auxiliary key={controlName + index}>
@@ -124,7 +115,7 @@ export default class QuizCreator extends Component {
         })
     }
 
-    selectChangeHandler = (event) => {
+    selectChangeHandler = event => {
         this.setState({
             rightAnswerId: +event.target.value
         })
@@ -165,14 +156,28 @@ export default class QuizCreator extends Component {
                         <Button
                             type="success"
                             onClick={this.createQuizHandler}
-                            disabled={this.state.quiz.length === 0}
+                            disabled={this.props.quiz.length === 0}
                         >
                             Создать тест
                         </Button>
-
                     </form>
                 </div>
             </div>
         )
     }
 }
+
+function mapStateToProps(state) {
+    return {
+        quiz: state.create.quiz
+    }
+}
+
+function mapDispatchToProps(dispatch) {
+    return {
+        createQuizQuestion: item => dispatch(createQuizQuestion(item)),
+        finishCreateQuiz: () => dispatch(finishCreateQuiz())
+    }
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(QuizCreator);
